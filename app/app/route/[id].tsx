@@ -53,7 +53,7 @@ export default function RouteDetailScreen() {
     if (isFavorite) {
       removeFavorite(id);
     } else {
-      addFavorite(id, 'route', routeData.route.longName || routeData.route.shortName);
+      addFavorite(id, 'route', routeData.route?.longName || routeData.route?.shortName || id);
     }
   }, [id, isFavorite, routeData, addFavorite, removeFavorite]);
 

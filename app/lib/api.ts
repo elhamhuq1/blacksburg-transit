@@ -71,8 +71,40 @@ class APIClient {
   }
 
   // Route stops
-  async getRouteStops(routeId: string, direction: number = 0): Promise<RouteStops> {
-    return this.fetch<RouteStops>(`/routes/${routeId}/stops?direction=${direction}`);
+  async getRouteStops(routeId: string): Promise<any> {
+    // Fetch both directions in parallel
+    const [dir0, dir1] = await Promise.all([
+      this.fetch<RouteStops>(`/routes/${routeId}/stops?direction=0`).catch(() => null),
+      this.fetch<RouteStops>(`/routes/${routeId}/stops?direction=1`).catch(() => null),
+    ]);
+
+    // Combine into expected structure
+    const directions = [];
+    if (dir0) {
+      directions.push({
+        directionId: '0',
+        name: dir0.directionName || 'Outbound',
+        stops: dir0.stops,
+      });
+    }
+    if (dir1) {
+      directions.push({
+        directionId: '1',
+        name: dir1.directionName || 'Inbound',
+        stops: dir1.stops,
+      });
+    }
+
+    return {
+      route: {
+        id: routeId,
+        shortName: routeId,
+        longName: routeId, // We'll get this from the routes list if needed
+        color: '#000000',
+        textColor: '#FFFFFF',
+      },
+      directions,
+    };
   }
 
   // Vehicles
@@ -104,8 +136,8 @@ export const fetchNearbyStops = (lat: number, lon: number, radius?: number) =>
   api.getNearbyStops(lat, lon);
 export const fetchStopDepartures = (stopId: string) => api.getStopDepartures(stopId);
 export const fetchStopSchedule = (stopId: string) => api.getStopSchedule(stopId);
-export const fetchRouteStops = (routeId: string, direction?: number) => 
-  api.getRouteStops(routeId, direction);
+export const fetchRouteStops = (routeId: string) => 
+  api.getRouteStops(routeId);
 export const fetchVehicles = (routeId?: string) => api.getVehicles(routeId);
 export const fetchAlerts = () => api.getAlerts();
 export const fetchHealth = () => api.getHealth();
