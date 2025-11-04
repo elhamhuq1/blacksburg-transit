@@ -42,8 +42,8 @@ export default async function handler(req: Request) {
   }
 
   try {
-    const params = routeId ? { RouteID: routeId } : {};
-    const xml = await fetchBT4U('GetVehiclePositions', params);
+    // GetCurrentBusInfo returns all buses with their positions
+    const xml = await fetchBT4U('GetCurrentBusInfo');
     let vehicles = parseVehicles(xml);
 
     // Filter by routeId if specified and not already filtered by API

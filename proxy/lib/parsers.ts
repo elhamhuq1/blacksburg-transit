@@ -109,7 +109,7 @@ export function parseNearbyStops(xml: string, userLat: number, userLon: number):
 }
 
 /**
- * Parse GetNextDeparturesForStop SOAP response
+ * Parse GetNextDepartures SOAP response
  */
 export function parsePredictions(xml: string, stopId: string): StopDepartures {
   try {
@@ -117,7 +117,13 @@ export function parsePredictions(xml: string, stopId: string): StopDepartures {
     const body =
       parsed['soap:Envelope']?.['soap:Body'] || parsed['SOAP-ENV:Envelope']?.['SOAP-ENV:Body'];
 
-    const result = body.GetNextDeparturesForStopResponse?.GetNextDeparturesForStopResult;
+    // Try new GetNextDepartures format first
+    let result = body?.GetNextDeparturesResponse?.GetNextDeparturesResult;
+    
+    // Fallback to old GetNextDeparturesForStop format if it exists
+    if (!result) {
+      result = body?.GetNextDeparturesForStopResponse?.GetNextDeparturesForStopResult;
+    }
 
     if (!result) {
       return {
@@ -129,16 +135,41 @@ export function parsePredictions(xml: string, stopId: string): StopDepartures {
       };
     }
 
-    const stopName = result.StopName || '';
-    const departures = result.Departure
-      ? Array.isArray(result.Departure)
-        ? result.Departure
-        : [result.Departure]
+    // Handle DocumentElement wrapper (GetNextDepartures format)
+    const documentElement = result.DocumentElement || result;
+    
+    // Extract stop name from first departure if available
+    const departures = documentElement.NextDepartures
+      ? Array.isArray(documentElement.NextDepartures)
+        ? documentElement.NextDepartures
+        : [documentElement.NextDepartures]
+      : documentElement.Departure
+      ? Array.isArray(documentElement.Departure)
+        ? documentElement.Departure
+        : [documentElement.Departure]
       : [];
 
+    const stopName = departures[0]?.StopName || result.StopName || '';
+
     const predictions: Prediction[] = departures.map((dep: any) => {
-      const etaMinutes = parseInt(dep.Minutes || dep.ETA || 0, 10);
-      const etaSeconds = etaMinutes * 60;
+      // Parse AdjustedDepartureTime (GetNextDepartures format)
+      const now = new Date();
+      let predictedArrivalTime: string;
+      let etaMinutes: number;
+      let etaSeconds: number;
+
+      if (dep.AdjustedDepartureTime) {
+        // Parse ISO 8601 datetime from BT4U
+        predictedArrivalTime = new Date(dep.AdjustedDepartureTime).toISOString();
+        etaSeconds = Math.max(0, Math.floor((new Date(dep.AdjustedDepartureTime).getTime() - now.getTime()) / 1000));
+        etaMinutes = Math.floor(etaSeconds / 60);
+      } else {
+        // Fallback to Minutes/ETA format (old format)
+        etaMinutes = parseInt(dep.Minutes || dep.ETA || 0, 10);
+        etaSeconds = etaMinutes * 60;
+        predictedArrivalTime = new Date(now.getTime() + etaSeconds * 1000).toISOString();
+      }
+
       const scheduleBased = dep.IsScheduled === true || dep.ScheduleBased === true;
       const delayMinutes = parseInt(dep.DelayMinutes || 0, 10);
 
@@ -147,13 +178,10 @@ export function parsePredictions(xml: string, stopId: string): StopDepartures {
       else if (delayMinutes > 5) status = 'delayed';
       else if (delayMinutes < -2) status = 'early';
 
-      const now = new Date();
-      const predictedArrivalTime = new Date(now.getTime() + etaSeconds * 1000).toISOString();
-
       return {
-        routeId: String(dep.RouteID || dep.Route || ''),
-        routeName: String(dep.RouteName || ''),
-        headsign: String(dep.Headsign || dep.Destination || ''),
+        routeId: String(dep.RouteID || dep.Route || dep.RouteShortName || ''),
+        routeName: String(dep.RouteName || dep.RouteShortName || ''),
+        headsign: String(dep.Headsign || dep.Destination || dep.PatternName || ''),
         predictedArrivalTime,
         etaMinutes: Math.max(0, etaMinutes),
         etaSeconds: Math.max(0, etaSeconds),
@@ -161,6 +189,13 @@ export function parsePredictions(xml: string, stopId: string): StopDepartures {
         delayMinutes,
         vehicleId: dep.VehicleID ? String(dep.VehicleID) : undefined,
         scheduleBased,
+        crowding: dep.CalculatedLoad !== undefined 
+          ? dep.CalculatedLoad === 0 
+            ? 'low' 
+            : dep.CalculatedLoad === 1 
+            ? 'medium' 
+            : 'high'
+          : undefined,
       };
     });
 

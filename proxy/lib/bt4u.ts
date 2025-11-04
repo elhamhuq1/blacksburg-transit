@@ -13,23 +13,42 @@ const SOAP_TIMEOUT = 3000; // 3 seconds max per request
  */
 export type BT4UOperation =
   | 'GetCurrentRoutes'
+  | 'GetCurrentBusInfo' // Vehicle positions
   | 'GetNearestStops'
+  | 'GetNextDepartures'
   | 'GetNextDeparturesForStop'
+  | 'GetScheduledRoutes'
   | 'GetScheduledStopInfo'
-  | 'GetRouteStops'
-  | 'GetVehiclePositions'
-  | 'GetAlerts';
+  | 'GetScheduledStopCodes'
+  | 'GetScheduledStopNames'
+  | 'GetScheduledPatternPoints'
+  | 'GetPatternPointsForPatternID'
+  | 'GetPatternNamesForDate'
+  | 'GetArrivalAndDepartureTimesForRoutes'
+  | 'GetArrivalAndDepartureTimesForTrip'
+  | 'GetActiveAlerts'
+  | 'GetAllAlerts';
 
 /**
  * Parameters for SOAP operations
+ * (Parameter names must match WSDL schema exactly - camelCase with lowercase first letter)
  */
 export interface BT4UParams {
+  stopCode?: string;
+  routeShortName?: string;
+  latitude?: string;
+  longitude?: string;
+  noOfStops?: string;
+  serviceDate?: string;
+  direction?: number;
+  noOfTrips?: number;
+  patternID?: string;
+  patternName?: string;
+  routeID?: string;
+  tripID?: string;
+  // Legacy/alternative names (kept for backwards compatibility)
   StopID?: string;
   RouteID?: string;
-  Latitude?: number;
-  Longitude?: number;
-  Radius?: number;
-  Direction?: number;
 }
 
 /**
@@ -61,6 +80,9 @@ export async function fetchBT4U(
 ): Promise<string> {
   const soapEnvelope = buildSOAPEnvelope(operation, params);
 
+  // Debug logging
+  console.log(`[BT4U] Calling ${operation} with params:`, JSON.stringify(params));
+
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), SOAP_TIMEOUT);
 
@@ -78,10 +100,13 @@ export async function fetchBT4U(
     clearTimeout(timeoutId);
 
     if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[BT4U] ${operation} failed with ${response.status}:`, errorText.substring(0, 500));
       throw new Error(`BT4U API returned ${response.status}: ${response.statusText}`);
     }
 
     const xmlText = await response.text();
+    console.log(`[BT4U] ${operation} success, response length: ${xmlText.length} bytes`);
     return xmlText;
   } catch (error) {
     clearTimeout(timeoutId);

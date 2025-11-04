@@ -63,7 +63,8 @@ export default async function handler(req: Request) {
   }
 
   try {
-    const xml = await fetchBT4U('GetRouteStops', { RouteID: routeId, Direction: direction });
+    // GetScheduledStopInfo returns stops and schedules for a route
+    const xml = await fetchBT4U('GetScheduledStopInfo', { routeShortName: routeId });
     const routeStops = parseRouteStops(xml, routeId, direction);
 
     // Cache for 5 minutes

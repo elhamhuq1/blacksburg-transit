@@ -89,9 +89,9 @@ export default async function handler(req: Request) {
 
   try {
     const xml = await fetchBT4U('GetNearestStops', {
-      Latitude: lat,
-      Longitude: lon,
-      Radius: radius,
+      latitude: String(lat),
+      longitude: String(lon),
+      noOfStops: '20', // Request up to 20 nearest stops
     });
 
     const stops = parseNearbyStops(xml, lat, lon);

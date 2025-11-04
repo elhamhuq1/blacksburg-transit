@@ -46,6 +46,7 @@ export interface Prediction {
   delayMinutes: number;
   vehicleId?: string;
   scheduleBased: boolean;
+  crowding?: 'low' | 'medium' | 'high'; // Vehicle occupancy level
 }
 
 export interface StopDepartures {

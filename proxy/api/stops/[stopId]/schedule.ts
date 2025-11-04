@@ -50,13 +50,14 @@ export default async function handler(req: Request) {
   }
 
   try {
-    const xml = await fetchBT4U('GetScheduledStopInfo', { StopID: stopId });
+    // GetScheduledRoutes returns routes and schedules for a stop
+    const xml = await fetchBT4U('GetScheduledRoutes', { stopCode: stopId });
     const schedule = parsePredictions(xml, stopId);
 
     // Mark all predictions as schedule-based
     const scheduleData = {
       ...schedule,
-      predictions: schedule.predictions.map((p) => ({ ...p, scheduleBased: true })),
+      predictions: schedule.predictions.map((p) => ({ ...p, scheduleBased: true, status: 'scheduled' as const })),
     };
 
     // Cache for 1 hour

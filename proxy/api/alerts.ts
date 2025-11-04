@@ -35,7 +35,8 @@ export default async function handler(req: Request) {
   }
 
   try {
-    const xml = await fetchBT4U('GetAlerts');
+    // Get all active alerts (current and future)
+    const xml = await fetchBT4U('GetActiveAlerts');
     const alerts = parseAlerts(xml);
 
     // Cache for 5 minutes
