@@ -1,12 +1,5 @@
 {
   "version": 2,
-  "public": false,
-  "functions": {
-    "api/**/*.ts": {
-      "runtime": "edge",
-      "maxDuration": 10
-    }
-  },
   "headers": [
     {
       "source": "/api/(.*)",
@@ -28,12 +21,6 @@
           "value": "no-cache, no-store, must-revalidate"
         }
       ]
-    }
-  ],
-  "rewrites": [
-    {
-      "source": "/api/:path*",
-      "destination": "/api/:path*"
     }
   ]
 }
