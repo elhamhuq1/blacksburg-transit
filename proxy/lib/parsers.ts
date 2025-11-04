@@ -62,8 +62,8 @@ export function parseRoutes(xml: string): Route[] {
       id: String(route.RouteID || route.ID || ''),
       name: String(route.RouteName || route.Name || ''),
       shortName: String(route.ShortName || route.RouteShortName || route.RouteID || ''),
-      color: route.Color ? `#${route.Color}` : '#FF6600',
-      textColor: '#FFFFFF',
+      color: route.RouteColor || route.Color ? `#${route.RouteColor || route.Color}` : '#FF6600',
+      textColor: route.RouteTextColor || route.TextColor ? `#${route.RouteTextColor || route.TextColor}` : '#FFFFFF',
       directions: route.Directions
         ? parseDirections(route.Directions)
         : [
