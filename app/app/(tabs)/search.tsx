@@ -21,7 +21,7 @@ import { StopCard } from '../../components/StopCard';
 import { RouteBadge } from '../../components/RouteBadge';
 import { EmptyState } from '../../components/EmptyState';
 import { Colors } from '../../constants/Colors';
-import { CONFIG } from '../../constants/Config';
+import { LOCATION } from '../../constants/Config';
 
 export default function SearchScreen() {
   const colorScheme = useColorScheme();
@@ -34,9 +34,9 @@ export default function SearchScreen() {
 
   // Fetch nearby stops (we'll use this as our "all stops" for now)
   const { data: stopsData, isLoading: stopsLoading } = useQuery({
-    queryKey: ['nearbyStops', CONFIG.DEFAULT_LOCATION.lat, CONFIG.DEFAULT_LOCATION.lon],
+    queryKey: ['nearbyStops', LOCATION.DEFAULT.LAT, LOCATION.DEFAULT.LON],
     queryFn: () =>
-      fetchNearbyStops(CONFIG.DEFAULT_LOCATION.lat, CONFIG.DEFAULT_LOCATION.lon, 5000), // 5km radius to get most stops
+      fetchNearbyStops(LOCATION.DEFAULT.LAT, LOCATION.DEFAULT.LON, 5000), // 5km radius to get most stops
     staleTime: 5 * 60 * 1000,
   });
 
