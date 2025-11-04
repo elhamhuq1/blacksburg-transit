@@ -6,7 +6,7 @@
 import { create } from 'zustand';
 import { MMKV } from 'react-native-mmkv';
 
-const storage = new MMKV({ id: 'settings' });
+const storage = new MMKV({ id: 'settings' }) as MMKV;
 
 export type Theme = 'light' | 'dark' | 'system';
 export type UnitsDistance = 'metric' | 'imperial';
