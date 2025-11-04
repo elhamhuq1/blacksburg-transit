@@ -20,6 +20,7 @@ class APIClient {
 
   constructor(baseURL: string = API_BASE_URL) {
     this.baseURL = baseURL;
+    console.log('[API] Initialized with baseURL:', this.baseURL);
   }
 
   private async fetch<T>(endpoint: string, options?: RequestInit): Promise<T> {
@@ -96,4 +97,16 @@ export const api = new APIClient();
 
 // Export class for testing
 export { APIClient };
+
+// Export convenience functions
+export const fetchRoutes = () => api.getRoutes();
+export const fetchNearbyStops = (lat: number, lon: number, radius?: number) => 
+  api.getNearbyStops(lat, lon);
+export const fetchStopDepartures = (stopId: string) => api.getStopDepartures(stopId);
+export const fetchStopSchedule = (stopId: string) => api.getStopSchedule(stopId);
+export const fetchRouteStops = (routeId: string, direction?: number) => 
+  api.getRouteStops(routeId, direction);
+export const fetchVehicles = (routeId?: string) => api.getVehicles(routeId);
+export const fetchAlerts = () => api.getAlerts();
+export const fetchHealth = () => api.getHealth();
 

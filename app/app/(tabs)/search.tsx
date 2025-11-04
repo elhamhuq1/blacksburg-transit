@@ -13,6 +13,7 @@ import {
   useColorScheme,
   ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { useRoutes } from '../../lib/hooks/useRoutes';
 import { useQuery } from '@tanstack/react-query';
@@ -83,7 +84,12 @@ export default function SearchScreen() {
   const hasResults = searchResults.routes.length > 0 || searchResults.stops.length > 0;
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+      {/* Header */}
+      <View style={[styles.header, { backgroundColor: colors.surface }]}>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Search</Text>
+      </View>
+
       {/* Search input */}
       <View style={[styles.searchContainer, { backgroundColor: colors.surface }]}>
         <Text style={styles.searchIcon}>🔍</Text>
@@ -201,13 +207,22 @@ export default function SearchScreen() {
           subtitle="Enter a stop name, code, or route number to get started"
         />
       )}
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  header: {
+    padding: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#E5E5EA',
+  },
+  headerTitle: {
+    fontSize: 32,
+    fontWeight: '700',
   },
   searchContainer: {
     flexDirection: 'row',
