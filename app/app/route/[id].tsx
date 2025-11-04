@@ -62,7 +62,7 @@ export default function RouteDetailScreen() {
   }, []);
 
   // Get stops for selected direction
-  const currentStops = routeData?.directions.find(
+  const currentStops = routeData?.directions?.find(
     (dir) => dir.directionId === selectedDirection
   )?.stops || [];
 
@@ -126,7 +126,7 @@ export default function RouteDetailScreen() {
           </View>
 
           {/* Direction switcher */}
-          {routeData.directions.length > 1 && (
+          {routeData?.directions && routeData.directions.length > 1 && (
             <View style={[styles.directionSwitcher, { backgroundColor: colors.surface }]}>
               {routeData.directions.map((dir) => (
                 <Pressable
