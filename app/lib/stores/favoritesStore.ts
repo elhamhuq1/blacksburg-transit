@@ -6,7 +6,7 @@
 import { create } from 'zustand';
 import { MMKV } from 'react-native-mmkv';
 
-const storage = new MMKV({ id: 'favorites' }) as MMKV;
+const storage = new MMKV({ id: 'favorites' });
 
 interface Favorite {
   id: string;
