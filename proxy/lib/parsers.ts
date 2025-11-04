@@ -242,12 +242,12 @@ export function parsePredictions(xml: string, stopId: string): StopDepartures {
 export function parseRouteStops(xml: string, routeId: string, direction: number): RouteStops {
   try {
     const parsed = xmlParser.parse(xml);
-    const body =
-      parsed['soap:Envelope']?.['soap:Body'] || parsed['SOAP-ENV:Envelope']?.['SOAP-ENV:Body'];
-
-    const result = body.GetRouteStopsResponse?.GetRouteStopsResult;
-
-    if (!result || !result.Stop) {
+    
+    // GetScheduledStopInfo returns DocumentElement > ScheduledStops array
+    const docElement = parsed.DocumentElement;
+    
+    if (!docElement || !docElement.ScheduledStops) {
+      console.log('[parseRouteStops] No ScheduledStops found in XML');
       return {
         routeId,
         direction,
@@ -256,16 +256,22 @@ export function parseRouteStops(xml: string, routeId: string, direction: number)
       };
     }
 
-    const stops = Array.isArray(result.Stop) ? result.Stop : [result.Stop];
-    const directionName = result.DirectionName || (direction === 0 ? 'Outbound' : 'Inbound');
+    const stops = Array.isArray(docElement.ScheduledStops) 
+      ? docElement.ScheduledStops 
+      : [docElement.ScheduledStops];
+    
+    const directionName = direction === 0 ? 'Outbound' : 'Inbound';
 
     const routeStops: RouteStop[] = stops.map((stop: any, index: number) => ({
-      id: String(stop.StopID || stop.ID || ''),
-      name: String(stop.StopName || stop.Name || ''),
-      sequence: stop.Sequence ?? index + 1,
-      lat: parseFloat(stop.Latitude || stop.Lat || 0),
-      lon: parseFloat(stop.Longitude || stop.Lon || 0),
+      id: String(stop.StopCode || ''),
+      name: String(stop.StopName || ''),
+      code: String(stop.StopCode || ''),
+      sequence: index + 1,
+      lat: parseFloat(stop.Latitude || 0),
+      lon: parseFloat(stop.Longitude || 0),
     }));
+
+    console.log(`[parseRouteStops] Parsed ${routeStops.length} stops for route ${routeId} direction ${direction}`);
 
     return {
       routeId,

@@ -64,7 +64,12 @@ export default async function handler(req: Request) {
 
   try {
     // GetScheduledStopInfo returns stops and schedules for a route
-    const xml = await fetchBT4U('GetScheduledStopInfo', { routeShortName: routeId });
+    // Need to provide serviceDate in YYYY-MM-DD format
+    const today = new Date().toISOString().split('T')[0];
+    const xml = await fetchBT4U('GetScheduledStopInfo', { 
+      routeShortName: routeId,
+      serviceDate: today 
+    });
     const routeStops = parseRouteStops(xml, routeId, direction);
 
     // Cache for 5 minutes

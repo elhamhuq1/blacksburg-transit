@@ -67,6 +67,7 @@ export interface RouteStops {
 export interface RouteStop {
   id: string;
   name: string;
+  code?: string;
   sequence: number;
   lat: number;
   lon: number;
