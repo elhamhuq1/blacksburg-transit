@@ -76,8 +76,8 @@ export default function SearchScreen() {
     router.push(`/stop/${stopId}`);
   }, []);
 
-  const handleRoutePress = useCallback((routeId: string) => {
-    router.push(`/route/${routeId}`);
+  const handleRoutePress = useCallback((routeShortName: string) => {
+    router.push(`/route/${routeShortName}`);
   }, []);
 
   const isLoading = routesLoading || stopsLoading;
@@ -138,11 +138,11 @@ export default function SearchScreen() {
               >
                 Routes ({searchResults.routes.length})
               </Text>
-              {searchResults.routes.map((route) => (
+              {searchResults.routes.map((route, index) => (
                 <View
-                  key={route.id}
+                  key={route.shortName || `route-${index}`}
                   style={[styles.routeItem, { backgroundColor: colors.surface }]}
-                  onTouchEnd={() => handleRoutePress(route.id)}
+                  onTouchEnd={() => handleRoutePress(route.shortName)}
                   accessibilityRole="button"
                   accessibilityLabel={`Route ${route.shortName} ${route.longName}`}
                 >
