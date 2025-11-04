@@ -17,7 +17,8 @@ export function PredictionRow({ prediction }: PredictionRowProps) {
   const colorScheme = useColorScheme();
   const colors = colorScheme === 'dark' ? Colors.dark : Colors.light;
 
-  const eta = formatETA(prediction.secondsUntilArrival);
+  const etaMinutes = Math.floor(prediction.secondsUntilArrival / 60);
+  const eta = formatETA(etaMinutes, prediction.secondsUntilArrival);
   const isApproaching = prediction.secondsUntilArrival < 60;
   const isScheduleBased = prediction.scheduleBased;
 

@@ -39,6 +39,9 @@ export function formatETA(etaMinutes: number, etaSeconds?: number): string {
 export function formatTime(isoString: string): string {
   try {
     const date = new Date(isoString);
+    if (isNaN(date.getTime())) {
+      return '--:--';
+    }
     return date.toLocaleTimeString('en-US', {
       hour: 'numeric',
       minute: '2-digit',
@@ -57,6 +60,9 @@ export function formatTime(isoString: string): string {
 export function getRelativeTime(isoString: string): string {
   try {
     const date = new Date(isoString);
+    if (isNaN(date.getTime())) {
+      return 'unknown';
+    }
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
     const diffMinutes = Math.floor(diffMs / 60000);
@@ -86,6 +92,9 @@ export function getRelativeTime(isoString: string): string {
 export function isStale(isoString: string, thresholdMs: number = 300000): boolean {
   try {
     const date = new Date(isoString);
+    if (isNaN(date.getTime())) {
+      return true;
+    }
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
     return diffMs > thresholdMs;
