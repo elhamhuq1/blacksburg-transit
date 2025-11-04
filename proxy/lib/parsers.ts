@@ -6,7 +6,6 @@
 import { XMLParser } from 'fast-xml-parser';
 import type {
   Route,
-  Stop,
   NearbyStop,
   Prediction,
   StopDepartures,
