@@ -54,16 +54,16 @@ export default function SearchScreen() {
     // Search routes
     const matchedRoutes = (routes || []).filter(
       (route) =>
-        route.shortName.toLowerCase().includes(query) ||
-        route.longName.toLowerCase().includes(query)
+        route?.shortName?.toLowerCase().includes(query) ||
+        route?.longName?.toLowerCase().includes(query)
     );
 
     // Search stops
     const matchedStops = stops.filter(
       (stop) =>
-        stop.name.toLowerCase().includes(query) ||
-        stop.code?.toLowerCase().includes(query) ||
-        stop.id.toLowerCase().includes(query)
+        stop?.name?.toLowerCase().includes(query) ||
+        stop?.code?.toLowerCase().includes(query) ||
+        stop?.id?.toLowerCase().includes(query)
     );
 
     return {
