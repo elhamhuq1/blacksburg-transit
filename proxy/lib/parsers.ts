@@ -30,20 +30,38 @@ const xmlParser = new XMLParser({
 export function parseRoutes(xml: string): Route[] {
   try {
     const parsed = xmlParser.parse(xml);
+    console.log('[Parser] GetCurrentRoutes parsed structure:', JSON.stringify(parsed, null, 2).substring(0, 1000));
+    
     const body =
       parsed['soap:Envelope']?.['soap:Body'] || parsed['SOAP-ENV:Envelope']?.['SOAP-ENV:Body'];
 
-    if (!body) return [];
+    if (!body) {
+      console.error('[Parser] No SOAP body found');
+      return [];
+    }
 
     const result = body.GetCurrentRoutesResponse?.GetCurrentRoutesResult;
-    if (!result || !result.Route) return [];
+    if (!result) {
+      console.error('[Parser] No GetCurrentRoutesResult found. Body keys:', Object.keys(body));
+      return [];
+    }
+    
+    // The result might have a DocumentElement wrapper
+    const documentElement = result.DocumentElement || result;
+    const routeData = documentElement.Route || documentElement.Routes;
+    
+    if (!routeData) {
+      console.error('[Parser] No Route data found. Result keys:', Object.keys(result));
+      return [];
+    }
 
-    const routes = Array.isArray(result.Route) ? result.Route : [result.Route];
+    const routes = Array.isArray(routeData) ? routeData : [routeData];
+    console.log(`[Parser] Found ${routes.length} routes`);
 
     return routes.map((route: any) => ({
       id: String(route.RouteID || route.ID || ''),
       name: String(route.RouteName || route.Name || ''),
-      shortName: String(route.ShortName || route.RouteID || ''),
+      shortName: String(route.ShortName || route.RouteShortName || route.RouteID || ''),
       color: route.Color ? `#${route.Color}` : '#FF6600',
       textColor: '#FFFFFF',
       directions: route.Directions
