@@ -30,6 +30,13 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="search"
+        options={{
+          title: 'Search',
+          tabBarIcon: () => null, // TODO: Add icon
+        }}
+      />
+      <Tabs.Screen
         name="favorites"
         options={{
           title: 'Favorites',
