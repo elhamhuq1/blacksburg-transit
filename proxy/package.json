@@ -4,7 +4,6 @@
   "description": "SOAP to JSON proxy for Blacksburg Transit (BT4U) API",
   "type": "module",
   "scripts": {
-    "dev": "vercel dev",
     "build": "tsc",
     "test": "jest",
     "test:coverage": "jest --coverage",

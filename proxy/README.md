@@ -40,10 +40,12 @@ npm install
 ### Run Locally
 
 ```bash
-npm run dev
+vercel dev
 ```
 
 The proxy will be available at `http://localhost:3000`
+
+**Note:** Run `vercel dev` directly (not `npm run dev`) to avoid recursive script issues.
 
 ### Environment Variables
 
