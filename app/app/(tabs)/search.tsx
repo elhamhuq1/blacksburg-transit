@@ -1,197 +1,204 @@
 /**
  * Search Tab Screen
- * Allows users to search for stops and routes
+ * Search for stops and routes
  */
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import {
-  FlatList,
-  SectionList,
-  StyleSheet,
-  Text,
-  TextInput,
   View,
+  Text,
+  StyleSheet,
+  TextInput,
+  ScrollView,
+  useColorScheme,
+  ActivityIndicator,
 } from 'react-native';
-import { useColorScheme } from 'react-native';
-import { Colors } from '../../constants/Colors';
+import { router } from 'expo-router';
 import { useRoutes } from '../../lib/hooks/useRoutes';
+import { useQuery } from '@tanstack/react-query';
+import { fetchNearbyStops } from '../../lib/api';
 import { StopCard } from '../../components/StopCard';
-import { EmptyState } from '../../components/EmptyState';
-import { LoadingSkeletonList } from '../../components/LoadingSkeleton';
 import { RouteBadge } from '../../components/RouteBadge';
-import { Pressable } from 'react-native';
-import { useRouter } from 'expo-router';
-
-// Debounce hook
-function useDebounce<T>(value: T, delay: number): T {
-  const [debouncedValue, setDebouncedValue] = useState(value);
-
-  React.useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedValue(value);
-    }, delay);
-
-    return () => {
-      clearTimeout(handler);
-    };
-  }, [value, delay]);
-
-  return debouncedValue;
-}
-
-// Import React for useEffect
-import React from 'react';
+import { EmptyState } from '../../components/EmptyState';
+import { Colors } from '../../constants/Colors';
+import { CONFIG } from '../../constants/Config';
 
 export default function SearchScreen() {
-  const [searchQuery, setSearchQuery] = useState('');
-  const debouncedQuery = useDebounce(searchQuery, 300);
   const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'light'];
-  const router = useRouter();
+  const colors = colorScheme === 'dark' ? Colors.dark : Colors.light;
 
-  const { data: routes, isLoading } = useRoutes();
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Fetch all routes
+  const { data: routes, isLoading: routesLoading } = useRoutes();
+
+  // Fetch nearby stops (we'll use this as our "all stops" for now)
+  const { data: stopsData, isLoading: stopsLoading } = useQuery({
+    queryKey: ['nearbyStops', CONFIG.DEFAULT_LOCATION.lat, CONFIG.DEFAULT_LOCATION.lon],
+    queryFn: () =>
+      fetchNearbyStops(CONFIG.DEFAULT_LOCATION.lat, CONFIG.DEFAULT_LOCATION.lon, 5000), // 5km radius to get most stops
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const stops = stopsData?.stops || [];
 
   // Fuzzy search logic
   const searchResults = useMemo(() => {
-    if (!debouncedQuery.trim() || !routes) {
+    if (!searchQuery.trim()) {
       return { routes: [], stops: [] };
     }
 
-    const query = debouncedQuery.toLowerCase();
+    const query = searchQuery.toLowerCase().trim();
 
     // Search routes
-    const filteredRoutes = routes.filter(
+    const matchedRoutes = (routes || []).filter(
       (route) =>
         route.shortName.toLowerCase().includes(query) ||
-        route.longName.toLowerCase().includes(query) ||
-        route.description?.toLowerCase().includes(query)
+        route.longName.toLowerCase().includes(query)
     );
 
-    // For MVP, we don't have a stops database yet
-    // This will be populated when we add the nearby stops API
-    const filteredStops: any[] = [];
+    // Search stops
+    const matchedStops = stops.filter(
+      (stop) =>
+        stop.name.toLowerCase().includes(query) ||
+        stop.code?.toLowerCase().includes(query) ||
+        stop.id.toLowerCase().includes(query)
+    );
 
-    return { routes: filteredRoutes, stops: filteredStops };
-  }, [debouncedQuery, routes]);
+    return {
+      routes: matchedRoutes.slice(0, 10),
+      stops: matchedStops.slice(0, 20),
+    };
+  }, [searchQuery, routes, stops]);
 
-  const handleRoutePress = (routeId: string) => {
+  const handleStopPress = useCallback((stopId: string) => {
+    router.push(`/stop/${stopId}`);
+  }, []);
+
+  const handleRoutePress = useCallback((routeId: string) => {
     router.push(`/route/${routeId}`);
-  };
+  }, []);
 
-  const sections = useMemo(() => {
-    const result = [];
-    
-    if (searchResults.routes.length > 0) {
-      result.push({
-        title: 'Routes',
-        data: searchResults.routes,
-        type: 'routes' as const,
-      });
-    }
-    
-    if (searchResults.stops.length > 0) {
-      result.push({
-        title: 'Stops',
-        data: searchResults.stops,
-        type: 'stops' as const,
-      });
-    }
-    
-    return result;
-  }, [searchResults]);
-
-  const renderRouteItem = (route: any) => (
-    <Pressable
-      onPress={() => handleRoutePress(route.id)}
-      style={({ pressed }) => [
-        styles.routeItem,
-        { backgroundColor: colors.backgroundSecondary },
-        pressed && { opacity: 0.7 },
-      ]}
-      accessible
-      accessibilityRole="button"
-      accessibilityLabel={`Route ${route.shortName}: ${route.longName}`}
-      accessibilityHint="Double tap to view route details"
-    >
-      <RouteBadge
-        shortName={route.shortName}
-        color={route.color}
-        textColor={route.textColor}
-        size="medium"
-      />
-      <View style={styles.routeDetails}>
-        <Text style={[styles.routeName, { color: colors.text }]} numberOfLines={1}>
-          {route.longName}
-        </Text>
-        {route.description && (
-          <Text style={[styles.routeDescription, { color: colors.textSecondary }]} numberOfLines={1}>
-            {route.description}
-          </Text>
-        )}
-      </View>
-      <Text style={[styles.chevron, { color: colors.textSecondary }]}>›</Text>
-    </Pressable>
-  );
+  const isLoading = routesLoading || stopsLoading;
+  const hasResults = searchResults.routes.length > 0 || searchResults.stops.length > 0;
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Search header */}
-      <View style={[styles.searchHeader, { backgroundColor: colors.surface }]}>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>Search</Text>
+      {/* Search input */}
+      <View style={[styles.searchContainer, { backgroundColor: colors.surface }]}>
+        <Text style={styles.searchIcon}>🔍</Text>
         <TextInput
-          style={[styles.searchInput, { backgroundColor: colors.backgroundSecondary, color: colors.text }]}
-          placeholder="Search routes or stops..."
+          style={[styles.searchInput, { color: colors.text }]}
+          placeholder="Search stops or routes..."
           placeholderTextColor={colors.textSecondary}
           value={searchQuery}
           onChangeText={setSearchQuery}
           autoCapitalize="none"
           autoCorrect={false}
           returnKeyType="search"
-          clearButtonMode="while-editing"
-          accessible
           accessibilityLabel="Search input"
-          accessibilityHint="Type to search for routes or stops"
+          accessibilityHint="Enter stop name, code, or route number"
+          allowFontScaling
         />
+        {searchQuery.length > 0 && (
+          <Text
+            style={[styles.clearButton, { color: colors.textSecondary }]}
+            onPress={() => setSearchQuery('')}
+            accessibilityLabel="Clear search"
+            accessibilityRole="button"
+          >
+            ✕
+          </Text>
+        )}
       </View>
 
-      {/* Results */}
-      {isLoading && <LoadingSkeletonList count={5} />}
-
-      {!isLoading && !searchQuery.trim() && (
-        <EmptyState
-          icon="🔍"
-          title="Search for routes or stops"
-          subtitle="Enter a route name, number, or stop name to get started."
-        />
+      {/* Loading state */}
+      {isLoading && searchQuery.trim() && (
+        <View style={styles.centerContent}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
       )}
 
-      {!isLoading && searchQuery.trim() && sections.length === 0 && (
-        <EmptyState
-          icon="❌"
-          title="No results found"
-          subtitle={`No routes or stops match "${searchQuery}"`}
-        />
-      )}
-
-      {!isLoading && sections.length > 0 && (
-        <SectionList
-          sections={sections}
-          keyExtractor={(item, index) => `${item.id}-${index}`}
-          renderItem={({ item, section }) => {
-            if (section.type === 'routes') {
-              return renderRouteItem(item);
-            }
-            // Stops will be handled later
-            return null;
-          }}
-          renderSectionHeader={({ section }) => (
-            <View style={[styles.sectionHeader, { backgroundColor: colors.background }]}>
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                {section.title}
+      {/* Search results */}
+      {!isLoading && searchQuery.trim() && (
+        <ScrollView style={styles.scrollView} keyboardShouldPersistTaps="handled">
+          {/* Routes results */}
+          {searchResults.routes.length > 0 && (
+            <View style={styles.section}>
+              <Text
+                style={[styles.sectionTitle, { color: colors.text }]}
+                accessibilityRole="header"
+                allowFontScaling
+              >
+                Routes ({searchResults.routes.length})
               </Text>
+              {searchResults.routes.map((route) => (
+                <View
+                  key={route.id}
+                  style={[styles.routeItem, { backgroundColor: colors.surface }]}
+                  onTouchEnd={() => handleRoutePress(route.id)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Route ${route.shortName} ${route.longName}`}
+                >
+                  <RouteBadge
+                    shortName={route.shortName}
+                    color={route.color}
+                    textColor={route.textColor}
+                    size="medium"
+                  />
+                  <Text
+                    style={[styles.routeName, { color: colors.text }]}
+                    numberOfLines={1}
+                    allowFontScaling
+                  >
+                    {route.longName}
+                  </Text>
+                </View>
+              ))}
             </View>
           )}
-          stickySectionHeadersEnabled={false}
+
+          {/* Stops results */}
+          {searchResults.stops.length > 0 && (
+            <View style={styles.section}>
+              <Text
+                style={[styles.sectionTitle, { color: colors.text }]}
+                accessibilityRole="header"
+                allowFontScaling
+              >
+                Stops ({searchResults.stops.length})
+              </Text>
+              {searchResults.stops.map((stop) => (
+                <StopCard
+                  key={stop.id}
+                  id={stop.id}
+                  name={stop.name}
+                  code={stop.code}
+                  distance={stop.distance}
+                  routes={stop.routes}
+                  onPress={() => handleStopPress(stop.id)}
+                />
+              ))}
+            </View>
+          )}
+
+          {/* No results */}
+          {!hasResults && (
+            <EmptyState
+              icon="🔍"
+              title="No results found"
+              subtitle={`No stops or routes match "${searchQuery}"`}
+            />
+          )}
+        </ScrollView>
+      )}
+
+      {/* Empty state (no search) */}
+      {!searchQuery.trim() && (
+        <EmptyState
+          icon="🔍"
+          title="Search for stops or routes"
+          subtitle="Enter a stop name, code, or route number to get started"
         />
       )}
     </View>
@@ -202,61 +209,57 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  searchHeader: {
-    padding: 16,
-    paddingTop: 60, // Account for status bar
-    gap: 16,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#E5E5EA',
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.1)',
   },
-  headerTitle: {
-    fontSize: 32,
-    fontWeight: '700',
+  searchIcon: {
+    fontSize: 20,
   },
   searchInput: {
-    height: 44,
-    borderRadius: 10,
-    paddingHorizontal: 16,
+    flex: 1,
     fontSize: 16,
+    paddingVertical: 8,
   },
-  sectionHeader: {
-    padding: 16,
-    paddingBottom: 8,
+  clearButton: {
+    fontSize: 20,
+    padding: 4,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  centerContent: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  section: {
+    marginTop: 16,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
+    paddingHorizontal: 16,
+    paddingBottom: 12,
   },
   routeItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     marginHorizontal: 16,
     marginVertical: 4,
     borderRadius: 12,
-    gap: 12,
-    // Shadow for iOS
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    // Elevation for Android
-    elevation: 1,
-  },
-  routeDetails: {
-    flex: 1,
   },
   routeName: {
     fontSize: 16,
     fontWeight: '500',
-  },
-  routeDescription: {
-    fontSize: 14,
-    marginTop: 2,
-  },
-  chevron: {
-    fontSize: 24,
-    fontWeight: '300',
+    flex: 1,
   },
 });
-

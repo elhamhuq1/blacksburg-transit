@@ -1,13 +1,12 @@
 /**
  * Prediction row component
- * Displays a single departure prediction with route badge, headsign, and ETA
+ * Displays route badge, headsign, and ETA for a single departure
  */
 
-import { StyleSheet, Text, View } from 'react-native';
-import { useColorScheme } from 'react-native';
-import { Colors } from '../constants/Colors';
+import { View, Text, StyleSheet, useColorScheme } from 'react-native';
 import { RouteBadge } from './RouteBadge';
-import { getETADisplayText } from '../lib/utils/smoothing';
+import { Colors } from '../constants/Colors';
+import { formatETA } from '../lib/utils/time';
 import type { Prediction } from '../types/api';
 
 interface PredictionRowProps {
@@ -16,76 +15,107 @@ interface PredictionRowProps {
 
 export function PredictionRow({ prediction }: PredictionRowProps) {
   const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'light'];
+  const colors = colorScheme === 'dark' ? Colors.dark : Colors.light;
 
-  const etaText = getETADisplayText(prediction.minutesUntilDeparture);
-  const isApproaching = prediction.minutesUntilDeparture < 1;
+  const eta = formatETA(prediction.secondsUntilArrival);
+  const isApproaching = prediction.secondsUntilArrival < 60;
+  const isScheduleBased = prediction.scheduleBased;
+
+  // Status indicator color
+  const getStatusColor = () => {
+    if (isApproaching) return colors.success;
+    if (isScheduleBased) return colors.textSecondary;
+    return colors.primary;
+  };
 
   // Crowding indicator
-  const crowdingEmoji = {
-    low: '🟢',
-    medium: '🟡',
-    high: '🔴',
+  const getCrowdingEmoji = () => {
+    switch (prediction.crowding) {
+      case 'low':
+        return '○';
+      case 'medium':
+        return '◐';
+      case 'high':
+        return '●';
+      default:
+        return null;
+    }
   };
 
   return (
     <View
       style={styles.container}
-      accessible
+      accessibilityLabel={`Route ${prediction.routeShortName} to ${prediction.headsign}, arriving in ${eta}${isScheduleBased ? ' (scheduled)' : ''}`}
       accessibilityRole="text"
-      accessibilityLabel={`Route ${prediction.routeShortName} to ${prediction.headsign}, departing in ${etaText}${prediction.scheduleBased ? ', scheduled time' : ''}${prediction.crowding ? `, ${prediction.crowding} crowding` : ''}`}
     >
-      {/* Route Badge */}
+      {/* Route badge */}
       <RouteBadge
         shortName={prediction.routeShortName}
-        color={prediction.routeColor || '#666666'}
-        textColor="#FFFFFF"
         size="medium"
       />
 
-      {/* Headsign and details */}
-      <View style={styles.details}>
+      {/* Headsign and direction */}
+      <View style={styles.content}>
         <Text
           style={[styles.headsign, { color: colors.text }]}
           numberOfLines={1}
+          allowFontScaling
         >
           {prediction.headsign}
         </Text>
-        <View style={styles.metaRow}>
-          {prediction.scheduleBased && (
-            <View style={[styles.chip, { backgroundColor: colors.backgroundSecondary }]}>
-              <Text style={[styles.chipText, { color: colors.textSecondary }]}>
-                📅 Schedule
-              </Text>
-            </View>
-          )}
-          {prediction.crowding && (
-            <View style={[styles.chip, { backgroundColor: colors.backgroundSecondary }]}>
-              <Text style={[styles.chipText, { color: colors.textSecondary }]}>
-                {crowdingEmoji[prediction.crowding]} {prediction.crowding}
-              </Text>
-            </View>
-          )}
-        </View>
+        {prediction.direction && (
+          <Text
+            style={[styles.direction, { color: colors.textSecondary }]}
+            numberOfLines={1}
+            allowFontScaling
+          >
+            {prediction.direction}
+          </Text>
+        )}
       </View>
 
-      {/* ETA */}
-      <View
-        style={[
-          styles.etaBadge,
-          isApproaching && { backgroundColor: colors.accent },
-        ]}
-      >
-        <Text
-          style={[
-            styles.etaText,
-            { color: isApproaching ? '#FFFFFF' : colors.text },
-            isApproaching && styles.etaTextBold,
-          ]}
-        >
-          {etaText}
-        </Text>
+      {/* ETA and crowding */}
+      <View style={styles.etaContainer}>
+        <View style={styles.etaRow}>
+          {/* Status indicator dot */}
+          <View
+            style={[styles.statusDot, { backgroundColor: getStatusColor() }]}
+            accessibilityLabel={isScheduleBased ? 'Scheduled time' : 'Real-time prediction'}
+          />
+          
+          <Text
+            style={[
+              styles.eta,
+              {
+                color: isApproaching ? colors.success : colors.text,
+                fontWeight: isApproaching ? '700' : '600',
+              },
+            ]}
+            allowFontScaling
+          >
+            {eta}
+          </Text>
+        </View>
+
+        {/* Crowding indicator */}
+        {getCrowdingEmoji() && (
+          <Text
+            style={[styles.crowding, { color: colors.textSecondary }]}
+            accessibilityLabel={`Crowding: ${prediction.crowding}`}
+          >
+            {getCrowdingEmoji()}
+          </Text>
+        )}
       </View>
+
+      {/* Schedule-based chip */}
+      {isScheduleBased && (
+        <View style={[styles.scheduleChip, { backgroundColor: colors.surface }]}>
+          <Text style={[styles.scheduleText, { color: colors.textSecondary }]} allowFontScaling>
+            Schedule
+          </Text>
+        </View>
+      )}
     </View>
   );
 }
@@ -97,43 +127,51 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 16,
     gap: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#E5E5EA',
+    minHeight: 64,
   },
-  details: {
+  content: {
     flex: 1,
-    gap: 4,
+    justifyContent: 'center',
   },
   headsign: {
     fontSize: 16,
     fontWeight: '500',
+    marginBottom: 2,
   },
-  metaRow: {
+  direction: {
+    fontSize: 13,
+  },
+  etaContainer: {
+    alignItems: 'flex-end',
+    minWidth: 70,
+  },
+  etaRow: {
     flexDirection: 'row',
-    gap: 8,
-    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 6,
   },
-  chip: {
-    paddingHorizontal: 8,
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  eta: {
+    fontSize: 16,
+  },
+  crowding: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+  scheduleChip: {
+    position: 'absolute',
+    top: 8,
+    right: 16,
+    paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
   },
-  chipText: {
-    fontSize: 12,
-  },
-  etaBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
-    minWidth: 70,
-    alignItems: 'center',
-  },
-  etaText: {
-    fontSize: 16,
+  scheduleText: {
+    fontSize: 10,
     fontWeight: '600',
   },
-  etaTextBold: {
-    fontWeight: '700',
-  },
 });
-

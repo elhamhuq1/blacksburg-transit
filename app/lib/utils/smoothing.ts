@@ -1,57 +1,30 @@
 /**
- * ETA smoothing and deduplication utilities
- * Implements smoothing logic from PRD section 7.6
+ * ETA smoothing and prediction deduplication utilities
+ * Implements PRD requirements for handling stale/jittery data
  */
 
 import type { Prediction } from '../../types/api';
 
 /**
- * Clamp negative ETAs to 0 (show "Approaching" instead of negative minutes)
+ * Clamp negative ETAs to 0 (show "Approaching" instead of negative times)
  */
-export function clampNegativeETA(prediction: Prediction): Prediction {
-  return {
-    ...prediction,
-    minutesUntilArrival: Math.max(0, prediction.minutesUntilArrival),
-    minutesUntilDeparture: Math.max(0, prediction.minutesUntilDeparture),
-  };
+export function clampNegativeETA(seconds: number): number {
+  return Math.max(0, seconds);
 }
 
 /**
- * Deduplicate predictions based on route, headsign, and similar arrival times
- * Two predictions are considered duplicates if:
- * - Same route ID
- * - Same headsign
- * - Arrival times within 1 minute of each other
+ * Deduplicate predictions by route+headsign combination
+ * Keeps the earliest arrival for each unique route+direction
  */
 export function dedupePredictions(predictions: Prediction[]): Prediction[] {
   const seen = new Map<string, Prediction>();
 
   for (const prediction of predictions) {
-    const key = `${prediction.routeId}:${prediction.headsign}`;
+    const key = `${prediction.routeId}-${prediction.headsign}-${prediction.direction}`;
     const existing = seen.get(key);
 
-    if (!existing) {
+    if (!existing || prediction.secondsUntilArrival < existing.secondsUntilArrival) {
       seen.set(key, prediction);
-      continue;
-    }
-
-    // If arrival times are within 1 minute, keep the earlier one (or real-time over schedule-based)
-    const timeDiff = Math.abs(prediction.minutesUntilArrival - existing.minutesUntilArrival);
-    
-    if (timeDiff <= 1) {
-      // Prefer real-time over schedule-based
-      if (!prediction.scheduleBased && existing.scheduleBased) {
-        seen.set(key, prediction);
-      } else if (prediction.scheduleBased === existing.scheduleBased) {
-        // If both same type, keep the earlier one
-        if (prediction.minutesUntilArrival < existing.minutesUntilArrival) {
-          seen.set(key, prediction);
-        }
-      }
-    } else {
-      // Different enough times - need a different key
-      const timeKey = `${key}:${Math.floor(prediction.minutesUntilArrival / 2)}`;
-      seen.set(timeKey, prediction);
     }
   }
 
@@ -59,84 +32,100 @@ export function dedupePredictions(predictions: Prediction[]): Prediction[] {
 }
 
 /**
- * Sort predictions by arrival time (earliest first)
+ * Smooth ETA jitter using exponential moving average
+ * Reduces visual "jumping" when ETAs fluctuate slightly between updates
+ * 
+ * @param currentETA - New ETA from API (seconds)
+ * @param previousETA - Last displayed ETA (seconds)
+ * @param alpha - Smoothing factor (0-1, higher = more responsive)
  */
-export function sortPredictionsByArrival(predictions: Prediction[]): Prediction[] {
-  return [...predictions].sort((a, b) => a.minutesUntilArrival - b.minutesUntilArrival);
-}
-
-/**
- * Smooth ETA jitter by rounding to nearest minute for ETAs > 2 minutes
- * For ETAs <= 2 minutes, show exact time to avoid "jumpy" countdowns
- */
-export function smoothETA(minutes: number): number {
-  if (minutes <= 2) {
-    return minutes; // Show exact time for imminent arrivals
+export function smoothETA(currentETA: number, previousETA: number | null, alpha: number = 0.3): number {
+  if (previousETA === null) {
+    return currentETA;
   }
-  
-  return Math.round(minutes); // Round to nearest minute for longer waits
+
+  // If the difference is large (>60s), don't smooth (likely a real change)
+  const diff = Math.abs(currentETA - previousETA);
+  if (diff > 60) {
+    return currentETA;
+  }
+
+  // Apply exponential moving average
+  return Math.round(alpha * currentETA + (1 - alpha) * previousETA);
 }
 
 /**
- * Filter out predictions that are too far in the future (> 60 minutes)
- * These are likely schedule-based predictions that aren't useful for real-time tracking
+ * Filter out stale predictions (older than 5 minutes)
+ * Prevents showing predictions that haven't updated
  */
-export function filterFuturePredictions(
+export function filterStalePredictions(
   predictions: Prediction[],
-  maxMinutes: number = 60
+  maxAgeMinutes: number = 5,
 ): Prediction[] {
-  return predictions.filter((p) => p.minutesUntilArrival <= maxMinutes);
+  const now = new Date();
+  const maxAgeMs = maxAgeMinutes * 60 * 1000;
+
+  return predictions.filter((prediction) => {
+    try {
+      const predictedTime = new Date(prediction.predictedTime);
+      const age = now.getTime() - predictedTime.getTime();
+      return age < maxAgeMs;
+    } catch {
+      // If timestamp is invalid, keep it (let UI show error state)
+      return true;
+    }
+  });
 }
 
 /**
- * Main smoothing pipeline: clamp, dedupe, sort, and filter predictions
+ * Sort predictions by ETA (ascending)
  */
-export function smoothPredictions(
+export function sortByETA(predictions: Prediction[]): Prediction[] {
+  return [...predictions].sort((a, b) => a.secondsUntilArrival - b.secondsUntilArrival);
+}
+
+/**
+ * Apply all smoothing operations to a list of predictions
+ * This is the main function to use in components
+ */
+export function processPredictions(
   predictions: Prediction[],
-  options: {
-    maxMinutes?: number;
-    dedupe?: boolean;
-  } = {}
+  previousPredictions?: Prediction[],
 ): Prediction[] {
-  const { maxMinutes = 60, dedupe = true } = options;
+  // 1. Clamp negative ETAs
+  let processed = predictions.map((p) => ({
+    ...p,
+    secondsUntilArrival: clampNegativeETA(p.secondsUntilArrival),
+  }));
 
-  let result = predictions.map(clampNegativeETA);
-  
-  if (dedupe) {
-    result = dedupePredictions(result);
+  // 2. Smooth ETAs if we have previous data
+  if (previousPredictions && previousPredictions.length > 0) {
+    const prevMap = new Map(
+      previousPredictions.map((p) => [
+        `${p.routeId}-${p.headsign}-${p.direction}`,
+        p.secondsUntilArrival,
+      ]),
+    );
+
+    processed = processed.map((p) => {
+      const key = `${p.routeId}-${p.headsign}-${p.direction}`;
+      const prevETA = prevMap.get(key);
+      
+      return {
+        ...p,
+        secondsUntilArrival: smoothETA(p.secondsUntilArrival, prevETA ?? null),
+      };
+    });
   }
-  
-  result = filterFuturePredictions(result, maxMinutes);
-  result = sortPredictionsByArrival(result);
 
-  return result;
+  // 3. Deduplicate
+  processed = dedupePredictions(processed);
+
+  // 4. Filter stale
+  processed = filterStalePredictions(processed);
+
+  // 5. Sort by ETA
+  processed = sortByETA(processed);
+
+  return processed;
 }
-
-/**
- * Get display text for ETA based on minutes until arrival
- */
-export function getETADisplayText(minutes: number): string {
-  if (minutes < 1) {
-    return 'Approaching';
-  }
-  
-  if (minutes === 1) {
-    return '1 min';
-  }
-  
-  const smoothed = smoothETA(minutes);
-  return `${smoothed} min`;
-}
-
-/**
- * Check if predictions are stale (haven't been updated recently)
- * Used to show "data may be stale" warnings
- */
-export function arePredictionsStale(lastUpdated: string, thresholdMinutes: number = 2): boolean {
-  const lastUpdateTime = new Date(lastUpdated).getTime();
-  const now = Date.now();
-  const diffMinutes = (now - lastUpdateTime) / (1000 * 60);
-  
-  return diffMinutes > thresholdMinutes;
-}
-

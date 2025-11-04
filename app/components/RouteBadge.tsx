@@ -1,52 +1,54 @@
 /**
- * Route badge pill component
- * Displays route number with color-coded background
+ * Route badge component
+ * Color-coded pill displaying route short name
  */
 
-import { StyleSheet, Text, View, type ViewStyle } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
+import { Colors } from '../constants/Colors';
 
 interface RouteBadgeProps {
   shortName: string;
-  color: string;
-  textColor: string;
+  color?: string;
+  textColor?: string;
   size?: 'small' | 'medium' | 'large';
-  style?: ViewStyle;
 }
 
 export function RouteBadge({
   shortName,
-  color,
-  textColor,
+  color = Colors.light.primary,
+  textColor = Colors.light.background,
   size = 'medium',
-  style,
 }: RouteBadgeProps) {
   const sizeStyles = {
-    small: styles.badgeSmall,
-    medium: styles.badgeMedium,
-    large: styles.badgeLarge,
+    small: { paddingHorizontal: 6, paddingVertical: 2, minWidth: 28 },
+    medium: { paddingHorizontal: 8, paddingVertical: 4, minWidth: 36 },
+    large: { paddingHorizontal: 10, paddingVertical: 6, minWidth: 44 },
   };
 
   const textSizeStyles = {
-    small: styles.textSmall,
-    medium: styles.textMedium,
-    large: styles.textLarge,
+    small: { fontSize: 11, lineHeight: 13 },
+    medium: { fontSize: 13, lineHeight: 16 },
+    large: { fontSize: 15, lineHeight: 18 },
   };
 
   return (
     <View
       style={[
         styles.badge,
-        sizeStyles[size],
         { backgroundColor: color },
-        style,
+        sizeStyles[size],
       ]}
-      accessible
-      accessibilityRole="text"
       accessibilityLabel={`Route ${shortName}`}
+      accessibilityRole="text"
     >
       <Text
-        style={[styles.text, textSizeStyles[size], { color: textColor }]}
+        style={[
+          styles.text,
+          { color: textColor },
+          textSizeStyles[size],
+        ]}
         numberOfLines={1}
+        allowFontScaling
       >
         {shortName}
       </Text>
@@ -56,40 +58,12 @@ export function RouteBadge({
 
 const styles = StyleSheet.create({
   badge: {
+    borderRadius: 6,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    minWidth: 40,
-  },
-  badgeSmall: {
-    minWidth: 32,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-  },
-  badgeMedium: {
-    minWidth: 40,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-  },
-  badgeLarge: {
-    minWidth: 48,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
   },
   text: {
     fontWeight: '700',
     textAlign: 'center',
   },
-  textSmall: {
-    fontSize: 12,
-  },
-  textMedium: {
-    fontSize: 14,
-  },
-  textLarge: {
-    fontSize: 16,
-  },
 });
-

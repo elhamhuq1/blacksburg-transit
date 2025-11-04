@@ -1,150 +1,133 @@
 /**
  * Stop card component
- * Displays stop information in a list (name, distance, routes)
+ * Displays stop name, distance, and routes for list views
  */
 
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { useColorScheme } from 'react-native';
-import { Colors } from '../constants/Colors';
+import { View, Text, StyleSheet, Pressable, useColorScheme } from 'react-native';
 import { RouteBadge } from './RouteBadge';
+import { Colors } from '../constants/Colors';
 import { formatDistance } from '../lib/utils/geo';
-import { useRouter } from 'expo-router';
 
 interface StopCardProps {
-  stopId: string;
-  stopName: string;
-  distance?: number; // meters
-  routes?: Array<{ id: string; shortName: string; color: string }>;
+  id: string;
+  name: string;
+  code?: string;
+  distance?: number; // in meters
+  routes?: string[];
   onPress?: () => void;
 }
 
-export function StopCard({
-  stopId,
-  stopName,
-  distance,
-  routes = [],
-  onPress,
-}: StopCardProps) {
+export function StopCard({ id, name, code, distance, routes, onPress }: StopCardProps) {
   const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'light'];
-  const router = useRouter();
-
-  const handlePress = () => {
-    if (onPress) {
-      onPress();
-    } else {
-      router.push(`/stop/${stopId}`);
-    }
-  };
+  const colors = colorScheme === 'dark' ? Colors.dark : Colors.light;
 
   return (
     <Pressable
-      onPress={handlePress}
       style={({ pressed }) => [
-        styles.container,
-        { backgroundColor: colors.backgroundSecondary },
+        styles.card,
+        { backgroundColor: colors.surface },
         pressed && { opacity: 0.7 },
       ]}
-      accessible
+      onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={`${stopName}${distance ? `, ${formatDistance(distance)} away` : ''}${routes.length > 0 ? `, routes ${routes.map((r) => r.shortName).join(', ')}` : ''}`}
-      accessibilityHint="Double tap to view stop details"
+      accessibilityLabel={`Stop ${name}${code ? `, code ${code}` : ''}${distance ? `, ${formatDistance(distance)} away` : ''}`}
     >
-      {/* Stop icon */}
-      <View style={[styles.iconContainer, { backgroundColor: colors.primary }]}>
-        <Text style={styles.icon}>🚏</Text>
-      </View>
+      {/* Header: Stop name and distance */}
+      <View style={styles.header}>
+        <View style={styles.nameContainer}>
+          <Text
+            style={[styles.name, { color: colors.text }]}
+            numberOfLines={1}
+            allowFontScaling
+          >
+            {name}
+          </Text>
+          {code && (
+            <Text
+              style={[styles.code, { color: colors.textSecondary }]}
+              allowFontScaling
+            >
+              #{code}
+            </Text>
+          )}
+        </View>
 
-      {/* Stop details */}
-      <View style={styles.details}>
-        <Text style={[styles.stopName, { color: colors.text }]} numberOfLines={1}>
-          {stopName}
-        </Text>
-        
         {distance !== undefined && (
-          <Text style={[styles.distance, { color: colors.textSecondary }]}>
+          <Text
+            style={[styles.distance, { color: colors.textSecondary }]}
+            allowFontScaling
+          >
             {formatDistance(distance)}
           </Text>
         )}
-
-        {/* Route badges */}
-        {routes.length > 0 && (
-          <View style={styles.routesContainer}>
-            {routes.slice(0, 4).map((route) => (
-              <RouteBadge
-                key={route.id}
-                shortName={route.shortName}
-                color={route.color}
-                textColor="#FFFFFF"
-                size="small"
-              />
-            ))}
-            {routes.length > 4 && (
-              <Text style={[styles.moreText, { color: colors.textSecondary }]}>
-                +{routes.length - 4} more
-              </Text>
-            )}
-          </View>
-        )}
       </View>
 
-      {/* Chevron */}
-      <Text style={[styles.chevron, { color: colors.textSecondary }]}>›</Text>
+      {/* Routes badges */}
+      {routes && routes.length > 0 && (
+        <View style={styles.routesContainer}>
+          {routes.slice(0, 5).map((route, index) => (
+            <RouteBadge
+              key={`${route}-${index}`}
+              shortName={route}
+              size="small"
+            />
+          ))}
+          {routes.length > 5 && (
+            <Text
+              style={[styles.moreRoutes, { color: colors.textSecondary }]}
+              allowFontScaling
+            >
+              +{routes.length - 5} more
+            </Text>
+          )}
+        </View>
+      )}
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  card: {
     padding: 16,
     borderRadius: 12,
     marginHorizontal: 16,
     marginVertical: 6,
-    gap: 12,
-    // Shadow for iOS
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    elevation: 2, // Android shadow
+    shadowColor: '#000', // iOS shadow
+    shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
-    shadowRadius: 4,
-    // Elevation for Android
-    elevation: 2,
+    shadowRadius: 2,
   },
-  iconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 8,
   },
-  icon: {
-    fontSize: 24,
-  },
-  details: {
+  nameContainer: {
     flex: 1,
-    gap: 4,
+    marginRight: 12,
   },
-  stopName: {
+  name: {
     fontSize: 16,
     fontWeight: '600',
+    marginBottom: 2,
+  },
+  code: {
+    fontSize: 13,
   },
   distance: {
     fontSize: 14,
+    fontWeight: '500',
   },
   routesContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 6,
-    marginTop: 4,
+    alignItems: 'center',
   },
-  moreText: {
+  moreRoutes: {
     fontSize: 12,
-    alignSelf: 'center',
-  },
-  chevron: {
-    fontSize: 28,
-    fontWeight: '300',
+    marginLeft: 4,
   },
 });
-

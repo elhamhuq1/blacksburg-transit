@@ -1,38 +1,43 @@
 /**
  * Empty state component
- * Shows icon, title, and subtitle when there's no content
+ * Displays icon, title, and subtitle for empty screens/lists
  */
 
-import { StyleSheet, Text, View } from 'react-native';
-import { useColorScheme } from 'react-native';
+import { View, Text, StyleSheet, useColorScheme } from 'react-native';
 import { Colors } from '../constants/Colors';
 
 interface EmptyStateProps {
   icon?: string;
   title: string;
   subtitle?: string;
+  action?: React.ReactNode;
 }
 
-export function EmptyState({ icon = '📭', title, subtitle }: EmptyStateProps) {
+export function EmptyState({ icon = '🚌', title, subtitle, action }: EmptyStateProps) {
   const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'light'];
+  const colors = colorScheme === 'dark' ? Colors.dark : Colors.light;
 
   return (
-    <View style={styles.container} accessible accessibilityRole="text">
-      <Text style={styles.icon} accessible={false}>
+    <View style={styles.container} accessibilityRole="text">
+      <Text style={styles.icon} accessibilityLabel={`${icon} icon`}>
         {icon}
       </Text>
       <Text
         style={[styles.title, { color: colors.text }]}
+        allowFontScaling
         accessibilityRole="header"
       >
         {title}
       </Text>
       {subtitle && (
-        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+        <Text
+          style={[styles.subtitle, { color: colors.textSecondary }]}
+          allowFontScaling
+        >
           {subtitle}
         </Text>
       )}
+      {action && <View style={styles.action}>{action}</View>}
     </View>
   );
 }
@@ -40,9 +45,10 @@ export function EmptyState({ icon = '📭', title, subtitle }: EmptyStateProps) 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    alignItems: 'center',
     justifyContent: 'center',
-    padding: 32,
+    alignItems: 'center',
+    paddingHorizontal: 32,
+    paddingVertical: 48,
   },
   icon: {
     fontSize: 64,
@@ -55,9 +61,11 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 15,
     textAlign: 'center',
-    lineHeight: 24,
+    lineHeight: 22,
+  },
+  action: {
+    marginTop: 24,
   },
 });
-

@@ -1,85 +1,96 @@
 /**
- * Tests for time utility functions
+ * Unit tests for time utilities
  */
 
-import {
-  formatETA,
-  formatTime,
-  getRelativeTime,
-  isStale,
-} from './time';
+import { formatETA, formatTime, getRelativeTime, isStale } from './time';
 
 describe('formatETA', () => {
-  it('should format seconds as minutes', () => {
-    expect(formatETA(120)).toBe('2 min');
-    expect(formatETA(300)).toBe('5 min');
-  });
-
-  it('should handle 1 minute specially', () => {
-    expect(formatETA(60)).toBe('1 min');
-  });
-
-  it('should show "Approaching" for < 60 seconds', () => {
-    expect(formatETA(30)).toBe('Approaching');
+  it('should format seconds under 60 as "Approaching"', () => {
     expect(formatETA(0)).toBe('Approaching');
+    expect(formatETA(30)).toBe('Approaching');
     expect(formatETA(59)).toBe('Approaching');
   });
 
-  it('should handle negative values (show "Now")', () => {
-    expect(formatETA(-30)).toBe('Now');
+  it('should format seconds 60-3540 as minutes', () => {
+    expect(formatETA(60)).toBe('1 min');
+    expect(formatETA(120)).toBe('2 mins');
+    expect(formatETA(300)).toBe('5 mins');
+    expect(formatETA(3540)).toBe('59 mins');
   });
 
-  it('should show hours for > 60 minutes', () => {
+  it('should format seconds >= 3600 as hours and minutes', () => {
     expect(formatETA(3600)).toBe('1 hr');
+    expect(formatETA(3660)).toBe('1 hr 1 min');
     expect(formatETA(7200)).toBe('2 hrs');
-    expect(formatETA(5400)).toBe('1 hr 30 min');
+    expect(formatETA(7320)).toBe('2 hrs 2 mins');
+  });
+
+  it('should handle negative ETAs by showing "Approaching"', () => {
+    expect(formatETA(-10)).toBe('Approaching');
+    expect(formatETA(-120)).toBe('Approaching');
   });
 });
 
 describe('formatTime', () => {
-  it('should format ISO timestamps as time strings', () => {
-    const isoString = '2025-11-04T14:30:00-05:00';
-    const result = formatTime(isoString);
-    expect(result).toMatch(/2:30 PM/); // May vary by locale
+  it('should format time in 12-hour format with AM/PM', () => {
+    expect(formatTime('2024-01-01T09:30:00')).toBe('9:30 AM');
+    expect(formatTime('2024-01-01T14:45:00')).toBe('2:45 PM');
+    expect(formatTime('2024-01-01T00:00:00')).toBe('12:00 AM');
+    expect(formatTime('2024-01-01T12:00:00')).toBe('12:00 PM');
   });
 
-  it('should handle invalid timestamps gracefully', () => {
+  it('should handle invalid dates gracefully', () => {
     expect(formatTime('invalid')).toBe('Invalid time');
   });
 });
 
 describe('getRelativeTime', () => {
-  it('should show "just now" for very recent times', () => {
-    const now = new Date().toISOString();
-    expect(getRelativeTime(now)).toBe('just now');
+  const now = new Date('2024-01-01T12:00:00').getTime();
+
+  it('should return "Just now" for recent timestamps', () => {
+    const recent = new Date('2024-01-01T11:59:50').toISOString();
+    expect(getRelativeTime(recent, now)).toBe('Just now');
   });
 
-  it('should show minutes ago', () => {
-    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-    expect(getRelativeTime(fiveMinutesAgo)).toBe('5 minutes ago');
+  it('should return "X seconds ago" for < 1 minute', () => {
+    const thirtySecsAgo = new Date('2024-01-01T11:59:30').toISOString();
+    expect(getRelativeTime(thirtySecsAgo, now)).toBe('30 seconds ago');
   });
 
-  it('should show hours ago', () => {
-    const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
-    expect(getRelativeTime(twoHoursAgo)).toBe('2 hours ago');
+  it('should return "X minutes ago" for < 1 hour', () => {
+    const fiveMinsAgo = new Date('2024-01-01T11:55:00').toISOString();
+    expect(getRelativeTime(fiveMinsAgo, now)).toBe('5 minutes ago');
+  });
+
+  it('should return "X hours ago" for < 24 hours', () => {
+    const twoHoursAgo = new Date('2024-01-01T10:00:00').toISOString();
+    expect(getRelativeTime(twoHoursAgo, now)).toBe('2 hours ago');
+  });
+
+  it('should return "X days ago" for >= 24 hours', () => {
+    const twoDaysAgo = new Date('2023-12-30T12:00:00').toISOString();
+    expect(getRelativeTime(twoDaysAgo, now)).toBe('2 days ago');
+  });
+
+  it('should handle invalid dates gracefully', () => {
+    expect(getRelativeTime('invalid', now)).toBe('Unknown');
   });
 });
 
 describe('isStale', () => {
-  it('should return false for recent timestamps', () => {
-    const now = new Date().toISOString();
-    expect(isStale(now, 5)).toBe(false);
+  const now = new Date('2024-01-01T12:00:00').getTime();
+
+  it('should return true for timestamps older than threshold', () => {
+    const sixMinsAgo = new Date('2024-01-01T11:54:00').toISOString();
+    expect(isStale(sixMinsAgo, 5, now)).toBe(true);
   });
 
-  it('should return true for old timestamps', () => {
-    const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
-    expect(isStale(tenMinutesAgo, 5)).toBe(true);
+  it('should return false for timestamps within threshold', () => {
+    const fourMinsAgo = new Date('2024-01-01T11:56:00').toISOString();
+    expect(isStale(fourMinsAgo, 5, now)).toBe(false);
   });
 
-  it('should respect custom threshold', () => {
-    const threeMinutesAgo = new Date(Date.now() - 3 * 60 * 1000).toISOString();
-    expect(isStale(threeMinutesAgo, 5)).toBe(false);
-    expect(isStale(threeMinutesAgo, 2)).toBe(true);
+  it('should handle invalid dates as stale', () => {
+    expect(isStale('invalid', 5, now)).toBe(true);
   });
 });
-
