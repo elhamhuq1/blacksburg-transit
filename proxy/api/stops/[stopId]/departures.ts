@@ -116,7 +116,7 @@ export default async function handler(req: Request) {
     }
 
     // Merge all predictions and sort by arrival time
-    const allPredictions = validDepartures.flatMap((d) => d.predictions);
+    const allPredictions = validDepartures.flatMap((d) => d?.predictions || []);
     allPredictions.sort(
       (a, b) =>
         new Date(a.predictedArrivalTime).getTime() - new Date(b.predictedArrivalTime).getTime()

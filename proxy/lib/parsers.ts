@@ -48,10 +48,10 @@ export function parseRoutes(xml: string): Route[] {
     
     // The result might have a DocumentElement wrapper
     const documentElement = result.DocumentElement || result;
-    const routeData = documentElement.Route || documentElement.Routes;
+    const routeData = documentElement.CurrentRoutes || documentElement.Route || documentElement.Routes;
     
     if (!routeData) {
-      console.error('[Parser] No Route data found. Result keys:', Object.keys(result));
+      console.error('[Parser] No Route data found. DocumentElement keys:', Object.keys(documentElement));
       return [];
     }
 
