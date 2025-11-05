@@ -119,7 +119,7 @@ export default async function handler(req: Request) {
     const allPredictions = validDepartures.flatMap((d) => d?.predictions || []);
     allPredictions.sort(
       (a, b) =>
-        new Date(a.predictedArrivalTime).getTime() - new Date(b.predictedArrivalTime).getTime()
+        new Date(a.predictedTime).getTime() - new Date(b.predictedTime).getTime()
     );
 
     const stopName = validDepartures[0]?.stopName || '';

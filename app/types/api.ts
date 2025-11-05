@@ -31,15 +31,14 @@ export interface NearbyStop {
 
 export interface Prediction {
   routeId: string;
-  routeName: string;
+  routeShortName: string; // Changed from routeName to match component
   headsign: string;
-  predictedArrivalTime: string; // ISO 8601
-  etaMinutes: number;
-  etaSeconds: number;
-  status: 'on_time' | 'delayed' | 'early' | 'scheduled';
-  delayMinutes: number;
-  vehicleId?: string;
+  direction?: string;
+  predictedTime: string; // ISO 8601
+  scheduledTime?: string; // ISO 8601
+  secondsUntilArrival: number; // Changed from etaSeconds to match component
   scheduleBased: boolean;
+  vehicleId?: string;
   crowding?: 'low' | 'medium' | 'high';
 }
 

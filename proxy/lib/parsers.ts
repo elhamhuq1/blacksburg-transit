@@ -198,15 +198,14 @@ export function parsePredictions(xml: string, stopId: string): StopDepartures {
 
       return {
         routeId: String(dep.RouteID || dep.Route || dep.RouteShortName || ''),
-        routeName: String(dep.RouteName || dep.RouteShortName || ''),
+        routeShortName: String(dep.RouteShortName || dep.RouteName || ''),
         headsign: String(dep.Headsign || dep.Destination || dep.PatternName || ''),
-        predictedArrivalTime,
-        etaMinutes: Math.max(0, etaMinutes),
-        etaSeconds: Math.max(0, etaSeconds),
-        status,
-        delayMinutes,
-        vehicleId: dep.VehicleID ? String(dep.VehicleID) : undefined,
+        direction: dep.Direction ? String(dep.Direction) : undefined,
+        predictedTime: predictedArrivalTime,
+        scheduledTime: dep.ScheduledTime ? new Date(dep.ScheduledTime).toISOString() : undefined,
+        secondsUntilArrival: Math.max(0, etaSeconds),
         scheduleBased,
+        vehicleId: dep.VehicleID ? String(dep.VehicleID) : undefined,
         crowding: dep.CalculatedLoad !== undefined 
           ? dep.CalculatedLoad === 0 
             ? 'low' 
