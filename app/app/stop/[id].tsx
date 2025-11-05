@@ -3,7 +3,7 @@
  * Shows real-time departures for a specific stop
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -66,10 +66,12 @@ export default function StopDetailScreen() {
     ? processPredictions(departuresData.predictions, previousPredictions)
     : [];
 
-  // Update previous predictions for next render
-  if (predictions.length > 0 && predictions !== previousPredictions) {
-    setPreviousPredictions(predictions);
-  }
+  // Update previous predictions for next render (must be in useEffect to avoid infinite loop)
+  useEffect(() => {
+    if (predictions.length > 0) {
+      setPreviousPredictions(predictions);
+    }
+  }, [departuresData?.lastUpdated]); // Only update when new data arrives
 
   // Stop info
   const stopName = departuresData?.stopName || `Stop ${id}`;
