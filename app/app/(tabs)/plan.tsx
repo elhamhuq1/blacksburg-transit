@@ -79,7 +79,7 @@ export default function PlanTripScreen() {
   const [selectedTrip, setSelectedTrip] = useState<TripOption | null>(null);
 
   // Fetch stops for autocomplete
-  const { data: stopsData } = useQuery({
+  const { data: stopsData, isLoading: isLoadingStops } = useQuery({
     queryKey: ['nearbyStops', LOCATION.DEFAULT.LAT, LOCATION.DEFAULT.LON],
     queryFn: () => fetchNearbyStops(LOCATION.DEFAULT.LAT, LOCATION.DEFAULT.LON, 5000),
     staleTime: 5 * 60 * 1000,
@@ -89,23 +89,23 @@ export default function PlanTripScreen() {
 
   // Filter stops based on query
   const filteredFromStops = useMemo(() => {
-    if (!fromQuery.trim()) return stops.slice(0, 20);
+    if (!fromQuery.trim()) return stops.slice(0, 30);
     const query = fromQuery.toLowerCase();
     return stops.filter(
       (stop) =>
-        stop.name.toLowerCase().includes(query) ||
-        stop.code?.toLowerCase().includes(query)
-    ).slice(0, 20);
+        stop?.name?.toLowerCase().includes(query) ||
+        stop?.id?.toLowerCase().includes(query)
+    ).slice(0, 30);
   }, [fromQuery, stops]);
 
   const filteredToStops = useMemo(() => {
-    if (!toQuery.trim()) return stops.slice(0, 20);
+    if (!toQuery.trim()) return stops.slice(0, 30);
     const query = toQuery.toLowerCase();
     return stops.filter(
       (stop) =>
-        stop.name.toLowerCase().includes(query) ||
-        stop.code?.toLowerCase().includes(query)
-    ).slice(0, 20);
+        stop?.name?.toLowerCase().includes(query) ||
+        stop?.id?.toLowerCase().includes(query)
+    ).slice(0, 30);
   }, [toQuery, stops]);
 
   const handleFromSelect = useCallback((stop: NearbyStop) => {
@@ -373,15 +373,20 @@ export default function PlanTripScreen() {
         animationType="slide"
         onRequestClose={() => setShowFromModal(false)}
       >
-        <SafeAreaView style={[styles.modalContainer, { backgroundColor: colors.background }]} edges={['top']}>
+        <SafeAreaView style={[styles.modalContainer, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
           <View style={[styles.modalHeader, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
-            <Pressable onPress={() => setShowFromModal(false)} accessibilityRole="button">
-              <Ionicons name="close" size={24} color={colors.text} />
+            <Pressable 
+              onPress={() => setShowFromModal(false)} 
+              accessibilityRole="button"
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              style={styles.closeButton}
+            >
+              <Ionicons name="close" size={28} color={colors.text} />
             </Pressable>
             <Text style={[styles.modalTitle, { color: colors.text }]} allowFontScaling>
               Select Starting Location
             </Text>
-            <View style={{ width: 24 }} />
+            <View style={{ width: 28 }} />
           </View>
           <View style={[styles.searchContainer, { backgroundColor: colors.surface }]}>
             <Ionicons name="search" size={20} color={colors.textSecondary} />
@@ -409,11 +414,18 @@ export default function PlanTripScreen() {
                     {stop.name}
                   </Text>
                   <Text style={[styles.stopCode, { color: colors.textSecondary }]} allowFontScaling>
-                    Stop #{stop.code}
+                    Stop #{stop.id}
                   </Text>
                 </View>
               </Pressable>
             ))}
+            {filteredFromStops.length === 0 && !isLoadingStops && (
+              <View style={styles.emptyList}>
+                <Text style={[styles.emptyText, { color: colors.textSecondary }]} allowFontScaling>
+                  {fromQuery.trim() ? 'No stops found' : 'Loading stops...'}
+                </Text>
+              </View>
+            )}
           </ScrollView>
         </SafeAreaView>
       </Modal>
@@ -424,15 +436,20 @@ export default function PlanTripScreen() {
         animationType="slide"
         onRequestClose={() => setShowToModal(false)}
       >
-        <SafeAreaView style={[styles.modalContainer, { backgroundColor: colors.background }]} edges={['top']}>
+        <SafeAreaView style={[styles.modalContainer, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
           <View style={[styles.modalHeader, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
-            <Pressable onPress={() => setShowToModal(false)} accessibilityRole="button">
-              <Ionicons name="close" size={24} color={colors.text} />
+            <Pressable 
+              onPress={() => setShowToModal(false)} 
+              accessibilityRole="button"
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              style={styles.closeButton}
+            >
+              <Ionicons name="close" size={28} color={colors.text} />
             </Pressable>
             <Text style={[styles.modalTitle, { color: colors.text }]} allowFontScaling>
               Select Destination
             </Text>
-            <View style={{ width: 24 }} />
+            <View style={{ width: 28 }} />
           </View>
           <View style={[styles.searchContainer, { backgroundColor: colors.surface }]}>
             <Ionicons name="search" size={20} color={colors.textSecondary} />
@@ -460,11 +477,18 @@ export default function PlanTripScreen() {
                     {stop.name}
                   </Text>
                   <Text style={[styles.stopCode, { color: colors.textSecondary }]} allowFontScaling>
-                    Stop #{stop.code}
+                    Stop #{stop.id}
                   </Text>
                 </View>
               </Pressable>
             ))}
+            {filteredToStops.length === 0 && !isLoadingStops && (
+              <View style={styles.emptyList}>
+                <Text style={[styles.emptyText, { color: colors.textSecondary }]} allowFontScaling>
+                  {toQuery.trim() ? 'No stops found' : 'Loading stops...'}
+                </Text>
+              </View>
+            )}
           </ScrollView>
         </SafeAreaView>
       </Modal>
@@ -659,8 +683,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  closeButton: {
+    padding: 4,
   },
   modalTitle: {
     fontSize: 18,
@@ -698,5 +726,14 @@ const styles = StyleSheet.create({
   },
   stopCode: {
     fontSize: 13,
+  },
+  emptyList: {
+    padding: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyText: {
+    fontSize: 16,
+    textAlign: 'center',
   },
 });
