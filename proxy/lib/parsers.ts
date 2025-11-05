@@ -243,8 +243,12 @@ export function parseRouteStops(xml: string, routeId: string, direction: number)
   try {
     const parsed = xmlParser.parse(xml);
     
-    // GetScheduledStopInfo returns DocumentElement > ScheduledStops array
-    const docElement = parsed.DocumentElement;
+    // Navigate through SOAP envelope to get to DocumentElement
+    const body =
+      parsed['soap:Envelope']?.['soap:Body'] || parsed['SOAP-ENV:Envelope']?.['SOAP-ENV:Body'];
+    
+    const result = body?.GetScheduledStopInfoResponse?.GetScheduledStopInfoResult;
+    const docElement = result?.DocumentElement;
     
     if (!docElement || !docElement.ScheduledStops) {
       console.log('[parseRouteStops] No ScheduledStops found in XML');
