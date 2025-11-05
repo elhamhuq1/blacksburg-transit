@@ -41,14 +41,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Near Me',
-          tabBarIcon: ({ color, size, focused }) => (
-            <Ionicons 
-              name={focused ? 'location' : 'location-outline'} 
-              size={size} 
-              color={color} 
-            />
-          ),
+          href: null, // Hide from tab bar - just redirects to map
         }}
       />
       <Tabs.Screen
