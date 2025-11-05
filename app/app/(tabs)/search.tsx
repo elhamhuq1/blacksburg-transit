@@ -12,15 +12,18 @@ import {
   ScrollView,
   useColorScheme,
   ActivityIndicator,
+  Pressable,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { useRoutes } from '../../lib/hooks/useRoutes';
 import { useQuery } from '@tanstack/react-query';
 import { fetchNearbyStops } from '../../lib/api';
 import { StopCard } from '../../components/StopCard';
 import { RouteBadge } from '../../components/RouteBadge';
 import { EmptyState } from '../../components/EmptyState';
+import { useFavoritesStore } from '../../lib/stores/favoritesStore';
 import { Colors } from '../../constants/Colors';
 import { LOCATION } from '../../constants/Config';
 
