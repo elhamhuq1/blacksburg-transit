@@ -104,3 +104,59 @@ export interface APIError {
   statusCode?: number;
 }
 
+// ==========================================
+// Trip Planner Types (for new feature)
+// ==========================================
+
+export interface TripStep {
+  type: 'walk' | 'bus' | 'transfer';
+  from?: string;
+  to?: string;
+  routeId?: string;
+  routeName?: string;
+  routeColor?: string;
+  duration: number; // in minutes
+  distance?: number; // in meters
+  stops?: number; // number of stops
+}
+
+export interface TripOption {
+  id: string;
+  departureTime: string; // ISO 8601
+  arrivalTime: string; // ISO 8601
+  duration: number; // in minutes
+  steps: TripStep[];
+  walkingDistance: number; // in meters
+  transfers: number;
+}
+
+// ==========================================
+// Type Aliases for v0 Components
+// ==========================================
+
+// Map v0's simpler Stop interface to our NearbyStop
+export type Stop = Pick<NearbyStop, 'id' | 'name' | 'lat' | 'lon'> & {
+  number: string;
+  distance?: number;
+};
+
+// Map our Prediction to v0's Departure interface
+export interface Departure {
+  routeId: string;
+  routeName: string;
+  routeColor: string;
+  destination: string; // headsign
+  minutesUntil: number;
+  occupancy: 'available' | 'standing' | 'full';
+  isAccessible: boolean;
+}
+
+// Helper function to convert crowding to occupancy
+export function crowdingToOccupancy(
+  crowding?: 'low' | 'medium' | 'high'
+): 'available' | 'standing' | 'full' {
+  if (!crowding || crowding === 'low') return 'available';
+  if (crowding === 'medium') return 'standing';
+  return 'full';
+}
+

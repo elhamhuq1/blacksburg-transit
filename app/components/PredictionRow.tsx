@@ -5,8 +5,10 @@
 
 import { View, Text, StyleSheet, useColorScheme } from 'react-native';
 import { RouteBadge } from './RouteBadge';
+import { OccupancyIndicator } from './OccupancyIndicator';
 import { Colors } from '../constants/Colors';
 import { formatETA } from '../lib/utils/time';
+import { crowdingToOccupancy } from '../types/api';
 import type { Prediction } from '../types/api';
 
 interface PredictionRowProps {
@@ -29,19 +31,8 @@ export function PredictionRow({ prediction }: PredictionRowProps) {
     return colors.primary;
   };
 
-  // Crowding indicator
-  const getCrowdingEmoji = () => {
-    switch (prediction.crowding) {
-      case 'low':
-        return '○';
-      case 'medium':
-        return '◐';
-      case 'high':
-        return '●';
-      default:
-        return null;
-    }
-  };
+  // Convert crowding to occupancy for indicator
+  const occupancy = crowdingToOccupancy(prediction.crowding);
 
   return (
     <View
@@ -75,7 +66,7 @@ export function PredictionRow({ prediction }: PredictionRowProps) {
         )}
       </View>
 
-      {/* ETA and crowding */}
+      {/* ETA and occupancy */}
       <View style={styles.etaContainer}>
         <View style={styles.etaRow}>
           {/* Status indicator dot */}
@@ -98,14 +89,13 @@ export function PredictionRow({ prediction }: PredictionRowProps) {
           </Text>
         </View>
 
-        {/* Crowding indicator */}
-        {getCrowdingEmoji() && (
-          <Text
-            style={[styles.crowding, { color: colors.textSecondary }]}
-            accessibilityLabel={`Crowding: ${prediction.crowding}`}
-          >
-            {getCrowdingEmoji()}
-          </Text>
+        {/* Occupancy indicator */}
+        {prediction.crowding && (
+          <OccupancyIndicator
+            occupancy={occupancy}
+            showLabel={false}
+            colorScheme={colorScheme || 'light'}
+          />
         )}
       </View>
 
@@ -158,10 +148,6 @@ const styles = StyleSheet.create({
   },
   eta: {
     fontSize: 16,
-  },
-  crowding: {
-    fontSize: 12,
-    marginTop: 2,
   },
   scheduleChip: {
     position: 'absolute',
